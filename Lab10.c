@@ -67,7 +67,9 @@
 #define PB5       (*((volatile uint32_t *)0x40005080)) 
 #define PB4       (*((volatile uint32_t *)0x40005040)) 
 //*******************************************************************************************************************************
-#define NUM_ENEMIES		5
+#define NUM_ENEMIES		5												
+#define JUMP_SPEED		-18										// screen rotated 90 degrees to the right so "up" is negative x direction
+#define GRAVITY 			3											// gravity towards positive x direction
 typedef enum {dead, alive} status_t;
 struct sprite {
 	int32_t x; 							// x coordinate 0-127
@@ -86,6 +88,7 @@ int NeedToDraw;
 void Init(void) {
 	Player.x = 116;
 	Player.y = 24;
+	Player.vy = JUMP_SPEED;									// player has initial y velocity to jump
 	Player.image = Player1;
 	Player.life = alive;
 	/*for (int i = 0; i < NUM_ENEMIES; i++) {
@@ -104,8 +107,17 @@ void Move(void) {
 	if (Player.life == alive) {
 			NeedToDraw = 1;
 			uint32_t adcData = ADC_In();
-			Player.y = 62-((62-8)*adcData/4096);							// maps player position by converting adcData 0-4095 to the screen 0-63 pixels wide
+			Player.y = 62-((62-8)*adcData/4096);	// adcData 0-4095, screen 0-63 pixels wide, player width 8 pixels. Slide pot now moves player.
+			
+			if (Player.x >= 113) {
+				Player.x = 116;
+				Player.vx = JUMP_SPEED;
+			} else {
+				Player.vx += GRAVITY;
+			}
+			Player.x += Player.vx;
 	}
+	
 
 	/*for (int i = 0; i < NUM_ENEMIES; i++) {
 		if (Enemys[i].life == alive) {
