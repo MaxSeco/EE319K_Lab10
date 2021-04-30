@@ -12,7 +12,7 @@
 // Input: none
 // Output: none
 // measures from PD2, analog channel 5
-void ADC_Init(void);
+void ADC_Init(uint32_t sac);
 
 //------------ADC_In------------
 // Busy-wait Analog to digital conversion

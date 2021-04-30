@@ -66,6 +66,95 @@
 #define PF3       (*((volatile uint32_t *)0x40025020))
 #define PB5       (*((volatile uint32_t *)0x40005080)) 
 #define PB4       (*((volatile uint32_t *)0x40005040)) 
+//*******************************************************************************************************************************
+#define NUM_ENEMIES		5
+typedef enum {dead, alive} status_t;
+struct sprite {
+	int32_t x; 							// x coordinate 0-127
+	int32_t y; 							// y coordinate 0-63
+	const uint8_t *image;  	// ptr->image
+	int32_t vx, vy;					// pixels/50ms
+	status_t life;					// dead/alive
+};
+typedef struct sprite sprite_t;
+
+sprite_t Enemys[NUM_ENEMIES];							
+sprite_t Player;						
+
+int NeedToDraw;
+
+void Init(void) {
+	Player.x = 116;
+	Player.y = 24;
+	Player.image = Player1;
+	Player.life = alive;
+	/*for (int i = 0; i < NUM_ENEMIES; i++) {
+		Enemys[i].x = 20*i + 12;
+		Enemys[i].y = 10;									// along the top
+		Enemys[i].image = AlienBossA;
+		Enemys[i]*/
+	//Enemys[0].vx = -2;	Enemys[0].vy = 1;
+	//Enemys[1].vx = -1;	Enemys[1].vy = 1;
+	//Enemys[2].vx = 0;	Enemys[2].vy = 2;
+	//Enemys[3].vx = 1;	Enemys[3].vy = 1;
+	//Enemys[4].vx = 2;	Enemys[4].vy = 1;
+}
+
+void Move(void) {
+	if (Player.life == alive) {
+			NeedToDraw = 1;
+			uint32_t adcData = ADC_In();
+			Player.y = 62-((62-8)*adcData/4096);							// maps player position by converting adcData 0-4095 to the screen 0-63 pixels wide
+	}
+
+	/*for (int i = 0; i < NUM_ENEMIES; i++) {
+		if (Enemys[i].life == alive) {
+			NeedToDraw = 1;
+			if ((Enemys[i].y > 62) || (Enemys[i].y < 10) ||(Enemys[i].x < 0) || (Enemys[i].x > 118)) {
+					Enemys[i].life = dead;
+		  } else {
+				Enemys[i].x += Enemys[i].vx;	// moves enemy based on its velocity
+				Enemys[i].y += Enemys[i].vy;
+			}
+		}
+	}*/
+}
+
+void Draw(void) {
+	SSD1306_ClearBuffer();
+	
+	if (Player.life == alive) {
+		SSD1306_DrawBMP(Player.x, Player.y, Player.image, 0, SSD1306_INVERSE);
+	}
+	/*for (int i = 0; i< NUM_ENEMIES; i++) {
+		if (Enemy[i].life == alive) {
+			SSD1306_DrawBMP(Enemys[i].x, Enemys[i].y, Enemys[i].image, 0, SSD1306_INVERSE);
+		}
+	}*/
+	
+	SSD1306_OutBuffer();
+	NeedToDraw = 0;
+}
+
+// **************SysTick_Init*********************
+// Initialize Systick periodic interrupts
+// Input: interrupt period
+//        Units of period are 12.5ns
+//        Maximum is 2^24-1
+//        Minimum is determined by length of ISR
+// Output: none
+void SysTick_Init(uint32_t period){
+	NVIC_ST_CTRL_R = 0;
+	NVIC_ST_RELOAD_R = period-1;
+	NVIC_ST_CURRENT_R = 0;
+	NVIC_ST_CTRL_R = 0x00000007;
+}
+
+void SysTick_Handler(void){ 
+	PF2 ^= 0x04;     // Heartbeat
+	Move();
+}
+//*******************************************************************************************************************************
 // TExaSdisplay logic analyzer shows 7 bits 0,PB5,PB4,PF3,PF2,PF1,0 
 // edit this to output which pins you use for profiling
 // you can output up to 7 pins
@@ -88,7 +177,7 @@ void Profile_Init(void){
  
 void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
-int main(void){uint32_t time=0;
+int main(void){
   DisableInterrupts();
   // pick one of the following three lines, all three set to 80 MHz
   //PLL_Init();                   // 1) call to have no TExaS debugging
@@ -98,49 +187,31 @@ int main(void){uint32_t time=0;
   SSD1306_OutClear();   
   Random_Init(1);
   Profile_Init(); // PB5,PB4,PF3,PF2,PF1 
-  SSD1306_ClearBuffer();
-  SSD1306_DrawBMP(2, 62, SpaceInvadersMarquee, 0, SSD1306_WHITE);
-  SSD1306_OutBuffer();
+	SysTick_Init(4000000); // interrupts every 50ms
+	ADC_Init(4);
+	Sound_Init();
+	Init();
+  //SSD1306_ClearBuffer();
+  //SSD1306_DrawBMP(2, 62, SpaceInvadersMarquee, 0, SSD1306_WHITE);
+  //SSD1306_OutBuffer();
   EnableInterrupts();
-  Delay100ms(20);
-  SSD1306_ClearBuffer();
-  SSD1306_DrawBMP(47, 63, PlayerShip0, 0, SSD1306_WHITE); // player ship bottom
-  SSD1306_DrawBMP(53, 55, Bunker0, 0, SSD1306_WHITE);
+	
+  //SSD1306_ClearBuffer();
+  //SSD1306_DrawBMP(47, 63, PlayerShip0, 0, SSD1306_WHITE); // player ship bottom
+  //SSD1306_DrawBMP(53, 55, Bunker0, 0, SSD1306_WHITE);
+  //SSD1306_OutBuffer();											// 25 ms
 
-  SSD1306_DrawBMP(0, 9, Alien10pointA, 0, SSD1306_WHITE);
-  SSD1306_DrawBMP(20,9, Alien10pointB, 0, SSD1306_WHITE);
-  SSD1306_DrawBMP(40, 9, Alien20pointA, 0, SSD1306_WHITE);
-  SSD1306_DrawBMP(60, 9, Alien20pointB, 0, SSD1306_WHITE);
-  SSD1306_DrawBMP(80, 9, Alien30pointA, 0, SSD1306_WHITE);
-  SSD1306_DrawBMP(50, 19, AlienBossA, 0, SSD1306_WHITE);
-  SSD1306_OutBuffer();
-  Delay100ms(30);
-
-  SSD1306_OutClear();  
-  SSD1306_SetCursor(1, 1);
-  SSD1306_OutString("GAME OVER");
-  SSD1306_SetCursor(1, 2);
-  SSD1306_OutString("Nice try,");
-  SSD1306_SetCursor(1, 3);
-  SSD1306_OutString("Earthling!");
-  SSD1306_SetCursor(2, 4);
   while(1){
-    Delay100ms(10);
-    SSD1306_SetCursor(19,0);
-    SSD1306_OutUDec2(time);
-    time++;
     PF1 ^= 0x02;
+		if (NeedToDraw) {
+			Draw();
+		}
   }
 }
 
-// You can't use this timer, it is here for starter code only 
-// you must use interrupts to perform delays
-void Delay100ms(uint32_t count){uint32_t volatile time;
-  while(count>0){
-    time = 727240;  // 0.1sec at 80 MHz
-    while(time){
-	  	time--;
-    }
-    count--;
-  }
-}
+
+
+
+
+
+
