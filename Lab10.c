@@ -70,6 +70,9 @@
 #define NUM_ENEMIES		5												
 #define JUMP_SPEED		-14										// screen rotated 90 degrees to the right so "up" is negative x direction
 #define GRAVITY 			2											// gravity towards positive x direction
+#define MAX_BULLETS		5
+#define PLAYER_WIDTH	8
+#define PLAYER_HEIGHT	10
 typedef enum {dead, alive} status_t;
 struct sprite {
 	int32_t x; 							// x coordinate 0-127
@@ -80,8 +83,8 @@ struct sprite {
 };
 typedef struct sprite sprite_t;
 
-sprite_t Enemys[NUM_ENEMIES];							
-sprite_t Player;						
+sprite_t Bullets[MAX_BULLETS];							
+sprite_t Player;					
 
 int NeedToDraw;
 
@@ -91,16 +94,6 @@ void Init(void) {
 	Player.vy = JUMP_SPEED;									// player has initial y velocity to jump
 	Player.image = Player1;
 	Player.life = alive;
-	/*for (int i = 0; i < NUM_ENEMIES; i++) {
-		Enemys[i].x = 20*i + 12;
-		Enemys[i].y = 10;									// along the top
-		Enemys[i].image = AlienBossA;
-		Enemys[i]*/
-	//Enemys[0].vx = -2;	Enemys[0].vy = 1;
-	//Enemys[1].vx = -1;	Enemys[1].vy = 1;
-	//Enemys[2].vx = 0;	Enemys[2].vy = 2;
-	//Enemys[3].vx = 1;	Enemys[3].vy = 1;
-	//Enemys[4].vx = 2;	Enemys[4].vy = 1;
 }
 
 void Move(void) {
@@ -119,35 +112,52 @@ void Move(void) {
 			}
 			Player.x += Player.vx;
 	}
-	
 
-	/*for (int i = 0; i < NUM_ENEMIES; i++) {
-		if (Enemys[i].life == alive) {
+	// Moves the bullets
+	for (int i = 0; i < MAX_BULLETS; i++) {
+		if (Bullets[i].life == alive) {
 			NeedToDraw = 1;
-			if ((Enemys[i].y > 62) || (Enemys[i].y < 10) ||(Enemys[i].x < 0) || (Enemys[i].x > 118)) {
-					Enemys[i].life = dead;
+			if ((Bullets[i].y > 62) || (Bullets[i].y < 10) ||(Bullets[i].x < 0) || (Bullets[i].x > 118)) {
+					Bullets[i].life = dead;
 		  } else {
-				Enemys[i].x += Enemys[i].vx;	// moves enemy based on its velocity
-				Enemys[i].y += Enemys[i].vy;
+				Bullets[i].x += Bullets[i].vx;	// moves Bullets based on its velocity
+				Bullets[i].y += Bullets[i].vy;
 			}
 		}
-	}*/
+	}
 }
 
 void Draw(void) {
 	SSD1306_ClearBuffer();
 	
+	// draws player
 	if (Player.life == alive) {
 		SSD1306_DrawBMP(Player.x, Player.y, Player.image, 0, SSD1306_INVERSE);
 	}
-	/*for (int i = 0; i< NUM_ENEMIES; i++) {
-		if (Enemy[i].life == alive) {
-			SSD1306_DrawBMP(Enemys[i].x, Enemys[i].y, Enemys[i].image, 0, SSD1306_INVERSE);
+	
+	// draws bullets
+	for (int i = 0; i< MAX_BULLETS; i++) {
+		if (Bullets[i].life == alive) {
+			SSD1306_DrawBMP(Bullets[i].x, Bullets[i].y, Bullets[i].image, 0, SSD1306_INVERSE);
 		}
-	}*/
+	}
 	
 	SSD1306_OutBuffer();
 	NeedToDraw = 0;
+}
+
+void Fire(int vx, int vy) {
+	for (int i = 0; i < MAX_BULLETS; i++) {
+		if (Bullets[i].life == dead) {
+			Bullets[i].x = Player.x + PLAYER_HEIGHT/2;
+			Bullets[i].y = Player.y + PLAYER_WIDTH/2;
+			Bullets[i].image = Missile0;
+			Bullets[i].vx = vx;
+			Bullets[i].vy = vy;
+			Bullets[i].life = alive;
+		}
+	}
+	
 }
 
 // **************SysTick_Init*********************
@@ -166,6 +176,17 @@ void SysTick_Init(uint32_t period){
 
 void SysTick_Handler(void){ 
 	PF2 ^= 0x04;     // Heartbeat
+	uint32_t down = Switch_In();
+	if (down == 0x04) {
+		PF3 = 0x08;
+	} else {
+		PF3 = 0x00;
+	}
+	
+	/*if (down  == 0x04 && lastdown == 0) {
+		PF3 ^= 0x08;
+		Fire(-1, 0);
+	}*/
 	Move();
 }
 //*******************************************************************************************************************************

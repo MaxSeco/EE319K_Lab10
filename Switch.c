@@ -1,7 +1,7 @@
 // Switch.c
 // This software to input from switches or buttons
 // Runs on TM4C123
-// Program written by: put your names here
+// Program written by: James Mahon and Ngoc Dao
 // Date Created: 3/6/17 
 // Last Modified: 1/14/21
 // Lab number: 10
@@ -13,3 +13,16 @@
 // Code files contain the actual implemenation for public functions
 // this file also contains an private functions and private data
 
+// Initialize port E for buttons
+void Switch_Init() {
+	SYSCTL_RCGCGPIO_R |= 0x10; 		// activate port E
+	while((SYSCTL_PRGPIO_R&0x20) != 0x20){};
+		
+	GPIO_PORTE_DIR_R &= ~(0x0F);      // make PE3-0 in
+  GPIO_PORTE_DEN_R |= 0x0F;         // enable digital I/O on PE3-0
+}
+
+// returns data from port E
+uint32_t Switch_In(void){ 
+  return GPIO_PORTE_DATA_R&0x0F;
+}

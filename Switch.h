@@ -14,6 +14,11 @@
 // Header files contain the prototypes for public functions 
 // this file explains what the module does
 
+// Initialize ports 
+void Switch_Init(void);
+	
+// returns data from port E
+uint32_t Switch_In(void);
 
 #endif
 
