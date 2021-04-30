@@ -68,8 +68,8 @@
 #define PB4       (*((volatile uint32_t *)0x40005040)) 
 //*******************************************************************************************************************************
 #define NUM_ENEMIES		5												
-#define JUMP_SPEED		-18										// screen rotated 90 degrees to the right so "up" is negative x direction
-#define GRAVITY 			3											// gravity towards positive x direction
+#define JUMP_SPEED		-14										// screen rotated 90 degrees to the right so "up" is negative x direction
+#define GRAVITY 			2											// gravity towards positive x direction
 typedef enum {dead, alive} status_t;
 struct sprite {
 	int32_t x; 							// x coordinate 0-127
@@ -104,11 +104,13 @@ void Init(void) {
 }
 
 void Move(void) {
+	// Physics for the Player's x-direction
 	if (Player.life == alive) {
 			NeedToDraw = 1;
 			uint32_t adcData = ADC_In();
 			Player.y = 62-((62-8)*adcData/4096);	// adcData 0-4095, screen 0-63 pixels wide, player width 8 pixels. Slide pot now moves player.
 			
+		// physics for the Player's y-direction (Screen is flipped so x is used)
 			if (Player.x >= 113) {
 				Player.x = 116;
 				Player.vx = JUMP_SPEED;
