@@ -70,7 +70,8 @@
 #define NUM_ENEMIES		5												
 #define JUMP_SPEED		-14										// screen rotated 90 degrees to the right so "up" is negative x direction
 #define GRAVITY 			2											// gravity towards positive x direction
-#define MAX_BULLETS		5
+#define MAX_BULLETS		6
+#define BULLET_SPEED	-8
 #define PLAYER_WIDTH	8
 #define PLAYER_HEIGHT	10
 typedef enum {dead, alive} status_t;
@@ -91,7 +92,7 @@ int NeedToDraw;
 void Init(void) {
 	Player.x = 116;
 	Player.y = 24;
-	Player.vy = JUMP_SPEED;									// player has initial y velocity to jump
+	Player.vx = JUMP_SPEED;									// player has initial y velocity to jump
 	Player.image = Player1;
 	Player.life = alive;
 }
@@ -149,12 +150,20 @@ void Draw(void) {
 void Fire(int vx, int vy) {
 	for (int i = 0; i < MAX_BULLETS; i++) {
 		if (Bullets[i].life == dead) {
-			Bullets[i].x = Player.x + PLAYER_HEIGHT/2;
-			Bullets[i].y = Player.y + PLAYER_WIDTH/2;
-			Bullets[i].image = Missile0;
-			Bullets[i].vx = vx;
+			Bullets[i].x = Player.x;
+			Bullets[i].y = Player.y - PLAYER_WIDTH/2;
+			Bullets[i].image = Laser2;
+			
+			// To prevent bullets moving slower and being under Player
+			if (Player.vx < 0) {
+				Bullets[i].vx = vx + Player.vx; // bullet is at least as fast as the player
+			} else {
+				Bullets[i].vx = vx;
+			}
+	
 			Bullets[i].vy = vy;
 			Bullets[i].life = alive;
+			return;
 		}
 	}
 	
@@ -176,18 +185,19 @@ void SysTick_Init(uint32_t period){
 
 void SysTick_Handler(void){ 
 	PF2 ^= 0x04;     // Heartbeat
-	uint32_t down = Switch_In();
-	if (down == 0x04) {
-		PF3 = 0x08;
-	} else {
-		PF3 = 0x00;
+	static uint32_t lastdown = 0;				// this is to prevent rapid fire when button is held down
+	uint32_t down  = Switch_In();
+	
+	// fires if PE2 is pressed
+	if (down  == 0x04 && lastdown == 0) {
+		PF3 ^= 0x08;
+		Fire(BULLET_SPEED, 0);
 	}
 	
-	/*if (down  == 0x04 && lastdown == 0) {
-		PF3 ^= 0x08;
-		Fire(-1, 0);
-	}*/
+	// moves everything on screen
 	Move();
+	
+	lastdown = down;
 }
 //*******************************************************************************************************************************
 // TExaSdisplay logic analyzer shows 7 bits 0,PB5,PB4,PF3,PF2,PF1,0 
@@ -225,6 +235,7 @@ int main(void){
 	SysTick_Init(4000000); // interrupts every 50ms
 	ADC_Init(4);
 	Sound_Init();
+	Switch_Init();
 	Init();
   //SSD1306_ClearBuffer();
   //SSD1306_DrawBMP(2, 62, SpaceInvadersMarquee, 0, SSD1306_WHITE);

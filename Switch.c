@@ -16,7 +16,10 @@
 // Initialize port E for buttons
 void Switch_Init() {
 	SYSCTL_RCGCGPIO_R |= 0x10; 		// activate port E
-	while((SYSCTL_PRGPIO_R&0x20) != 0x20){};
+	__asm__{
+		NOP
+		NOP
+	}
 		
 	GPIO_PORTE_DIR_R &= ~(0x0F);      // make PE3-0 in
   GPIO_PORTE_DEN_R |= 0x0F;         // enable digital I/O on PE3-0
