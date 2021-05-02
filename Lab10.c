@@ -110,7 +110,8 @@ int RectIntersect(sprite_t rect0, int width0, int height0, sprite_t rect1, int w
 
 // global variables
 int NeedToDraw;
-int highestPlatformIndex;				// saves the highest/last platform index, so newer platforms can be placed above that only 
+int highestPlatformIndex;				// saves the highest/last platform index, so newer platforms can be placed above that only
+int score;
 
 // Initializes all game objects at the beginning of game
 void Init(void) {
@@ -163,19 +164,18 @@ void Move(uint32_t input) {
 			} 
 			
 		// physics for the Player's x-direction
-			if (Player.x >= 113) {
-				Player.x = SCREEN_WIDTH - PLAYER_WIDTH;
-				Player.vx = JUMP_SPEED;
+			if (Player.x >= SCREEN_WIDTH) {
+				Player.life = dead;
 			} 
 			if (Player.vx < MAX_FALLING_SPEED) {
 					Player.vx += GRAVITY;
 			}
 			if (Player.x > 65) {														// if player is below a certain line, player falls normally
 				Player.x += Player.vx;												
-			} else if (Player.vx < 0){											// we enter this "else if" if the player is above a certain line 
+			} else if (Player.vx < 0){											// else, we move the platforms
 				Player.x = 65;
 				movePlatforms = 1;
-			} else {																				// if player is no longer moving up, player is ready to fall down
+			} else {																				// if player is falling down
 				Player.x = 66;																// we no longer need to move the platforms
 				movePlatforms = 0;
 			}
@@ -187,6 +187,7 @@ void Move(uint32_t input) {
 		for (int i = 0; i < NUM_PLATFORMS; i++) {
 			if (Platforms[i].life == alive) {
 				Platforms[i].x += abs(Player.vx);
+				score += abs(Player.vx);
 				if (Platforms[i].x > 124) {
 					Platforms[i].x = Platforms[highestPlatformIndex].x - Random()%22 - 10;
 					Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_HEIGHT))+PLATFORM_HEIGHT;
@@ -287,20 +288,30 @@ void Collisions(void) {
 		if (Platforms[i].life == alive) {
 			int xDiff = abs(Player.x + PLAYER_WIDTH - Platforms[i].x);
 			int yDiff = abs((Player.y-PLAYER_HEIGHT/2) - (Platforms[i].y-PLATFORM_HEIGHT/2));
-			if ((xDiff < 4) && (yDiff < 5) && Player.vx > 0) {
+			if ((xDiff < 5) && (yDiff < 5) && Player.vx > 0) {
 				Player.vx = JUMP_SPEED;
 				break;
 			}
 		}
 	}
 	
-	// check for bullet collision with enemies
+	// checks for bullet collision with enemies
 	for (int i = 0; i < NUM_BULLETS; i++) {
 		for (int j = 0; j < NUM_ENEMIES; j++) {
 			if (Enemys[i].life == alive) {
 				if (RectIntersect(Bullets[i], BULLET_WIDTH, BULLET_HEIGHT, Enemys[j], ENEMY_WIDTH, ENEMY_HEIGHT)) {
 					Enemys[j].life = dead;
+					score += 1000;
 				}
+			}
+		}
+	}
+	
+	// checks for Player collision with enemies
+	for (int i = 0; i < NUM_ENEMIES; i++) {
+		if (Enemys[i].life == alive) {
+			if (RectIntersect(Player, PLAYER_WIDTH, PLAYER_HEIGHT, Enemys[i], ENEMY_WIDTH, ENEMY_HEIGHT)) {
+				Player.life = dead;
 			}
 		}
 	}
@@ -328,7 +339,7 @@ void SysTick_Handler(void){
 	uint32_t input  = Switch_In();
 	
 	// fires if PE2 is pressed
-	if ((input&0x04)  == 0x04 && lastinput == 0) {
+	if ((input&0x04)  == 0x04 && lastinput == 0 && Player.life == alive) {
 		Fire(BULLET_SPEED, 0);
 	}
 	
@@ -390,6 +401,13 @@ int main(void){
 			Draw();
 		}
   }
+	DisableInterrupts();
+	SSD1306_OutClear();
+	SSD1306_OutString("Nice Try!");
+	SSD1306_SetCursor(0, 2);
+	SSD1306_OutString("Score: ");
+	LCD_OutDec(score/100);
+	while(1) {};
 }
 
 
