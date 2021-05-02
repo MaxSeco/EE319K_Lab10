@@ -68,18 +68,27 @@
 #define PB5       (*((volatile uint32_t *)0x40005080)) 
 #define PB4       (*((volatile uint32_t *)0x40005040)) 
 //*******************************************************************************************************************************					
-#define NUM_PLATFORMS	 	5
-#define JUMP_SPEED			-10										// screen rotated 90 degrees to the right so "up" is negative x direction
-#define GRAVITY 				1											// gravity towards positive x direction
-#define MAX_BULLETS			10
-#define BULLET_SPEED		-8
-#define SCREEN_WIDTH  	126											// original jump speed -14 gravity 2
-#define	SCREEN_HEIGHT		62
-#define PLAYER_WIDTH		8
-#define PLAYER_HEIGHT		10
-#define PLATFORM_WIDTH 	10
+#define NUM_PLATFORMS	 		10
+#define JUMP_SPEED				-10										// screen rotated 90 degrees to the right so "up" is negative x direction
+#define GRAVITY 					1											// gravity towards positive x direction
+#define NUM_BULLETS				10
+#define BULLET_WIDTH			4
+#define BULLET_HEIGHT			1
+#define BULLET_SPEED			-8
+#define SCREEN_WIDTH  		126											// original jump speed -14 gravity 2
+#define	SCREEN_HEIGHT			62
+#define PLAYER_WIDTH			10
+#define PLAYER_HEIGHT			8
+#define PLATFORM_WIDTH		2
+#define PLATFORM_HEIGHT		10
 #define MAX_FALLING_SPEED	8
+#define NUM_ENEMIES				1
+#define ENEMY_WIDTH				10
+#define ENEMY_HEIGHT			8
+#define MIN(a,b) (((a)<(b))?(a):(b))						// finds the min of two numbers
+#define MAX(a,b) (((a)>(b))?(a):(b))						// finds the max of two numbers
 
+// structs and enums
 typedef enum {dead, alive} status_t;
 struct sprite {
 	int32_t x; 							// x coordinate 0-127
@@ -91,9 +100,15 @@ struct sprite {
 typedef struct sprite sprite_t;
 
 sprite_t Player;
-sprite_t Bullets[MAX_BULLETS];
+sprite_t Bullets[NUM_BULLETS];
 sprite_t Platforms[NUM_PLATFORMS];
+sprite_t Enemys[NUM_ENEMIES];
 
+// function prototypes
+int RangeIntersect(int min0, int max0, int min1, int max1);
+int RectIntersect(sprite_t rect0, int width0, int height0, sprite_t rect1, int width1, int height1);
+
+// global variables
 int NeedToDraw;
 int highestPlatformIndex;				// saves the highest/last platform index, so newer platforms can be placed above that only 
 
@@ -114,9 +129,18 @@ void Init(void) {
 	highestPlatformIndex = NUM_PLATFORMS-1;
 	for (int i = 1; i < NUM_PLATFORMS; i++) {
 		Platforms[i].x = Platforms[i-1].x - Random()%24 - 8;     // next platform x coordinate based on the previous
-		Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_WIDTH))+PLATFORM_WIDTH;
+		Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_HEIGHT))+PLATFORM_HEIGHT;
 		Platforms[i].image = Platform1;
 		Platforms[i].life = alive;
+	}
+	
+	// Initalize Enemies
+	for (int i = 0; i < NUM_ENEMIES; i++) {
+		int rand = Random()%(NUM_PLATFORMS-1) + 1; 		// random int from 1 to (NUM_PLATFOMRS-1) 
+		Enemys[i].x = Platforms[rand].x - ENEMY_WIDTH; 
+		Enemys[i].y = Platforms[rand].y-1;
+		Enemys[i].image = Enemy2;
+		Enemys[i].life = alive;
 	}
 }
 
@@ -140,7 +164,7 @@ void Move(uint32_t input) {
 			
 		// physics for the Player's x-direction
 			if (Player.x >= 113) {
-				Player.x = SCREEN_WIDTH - PLAYER_HEIGHT;
+				Player.x = SCREEN_WIDTH - PLAYER_WIDTH;
 				Player.vx = JUMP_SPEED;
 			} 
 			if (Player.vx < MAX_FALLING_SPEED) {
@@ -158,24 +182,34 @@ void Move(uint32_t input) {
 			
 	}
 	
-	// moves the platforms when player is above a certain line
+	// moves the platforms
 	if (movePlatforms) {
 		for (int i = 0; i < NUM_PLATFORMS; i++) {
 			if (Platforms[i].life == alive) {
 				Platforms[i].x += abs(Player.vx);
 				if (Platforms[i].x > 124) {
-					Platforms[i].x = Platforms[highestPlatformIndex].x - Random()%24 - 8;
-					Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_WIDTH))+PLATFORM_WIDTH;
+					Platforms[i].x = Platforms[highestPlatformIndex].x - Random()%22 - 10;
+					Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_HEIGHT))+PLATFORM_HEIGHT;
 					highestPlatformIndex = i;
 				}
 			}
 		}
+		
+		// moves the enemies
+		for (int i = 0; i < NUM_ENEMIES; i++) {
+				Enemys[i].x += abs(Player.vx);
+				if (Enemys[i].x > (SCREEN_WIDTH - ENEMY_WIDTH) || Enemys[i].life == dead) { // if enemy is off the screen or dead, respawn enemy somehwere high up
+					int rand = Random()%5; 	
+					Enemys[i].x = Platforms[highestPlatformIndex-rand].x - ENEMY_WIDTH; 
+					Enemys[i].y = Platforms[highestPlatformIndex-rand].y-1;
+					Enemys[i].life = alive;
+				}
+		}	
 		movePlatforms = 0;
 	}
-			
 
 	// Moves the bullets
-	for (int i = 0; i < MAX_BULLETS; i++) {
+	for (int i = 0; i < NUM_BULLETS; i++) {
 		if (Bullets[i].life == alive) {
 			NeedToDraw = 1;
 			if ((Bullets[i].y > 62) || (Bullets[i].y < 0) ||(Bullets[i].x < 0) || (Bullets[i].x > 123)) {
@@ -199,7 +233,7 @@ void Draw(void) {
 	}
 	
 	// draws bullets
-	for (int i = 0; i< MAX_BULLETS; i++) {
+	for (int i = 0; i< NUM_BULLETS; i++) {
 		if (Bullets[i].life == alive) {
 			SSD1306_DrawBMP(Bullets[i].x, Bullets[i].y, Bullets[i].image, 0, SSD1306_INVERSE);
 		}
@@ -212,6 +246,13 @@ void Draw(void) {
 		}
 	}
 	
+	// draws enemies
+	for (int i = 0; i < NUM_ENEMIES; i++) {
+		if (Enemys[i].life == alive) {
+			SSD1306_DrawBMP(Enemys[i].x, Enemys[i].y, Enemys[i].image, 0, SSD1306_WHITE);
+		}
+	}
+	
 	SSD1306_OutBuffer();
 	NeedToDraw = 0;
 }
@@ -221,10 +262,10 @@ void Draw(void) {
 // Outputs: None
 void Fire(int vx, int vy) {
 	// searches bullet array for a dead bullet and bring it to life
-	for (int i = 0; i < MAX_BULLETS; i++) {
+	for (int i = 0; i < NUM_BULLETS; i++) {
 		if (Bullets[i].life == dead) {
 			Bullets[i].x = Player.x;
-			Bullets[i].y = Player.y - PLAYER_WIDTH/2;
+			Bullets[i].y = Player.y - PLAYER_HEIGHT/2;
 			Bullets[i].image = Laser2;
 			// To prevent bullets moving slower and being under Player
 			if (Player.vx < 0) {
@@ -239,19 +280,32 @@ void Fire(int vx, int vy) {
 	}
 }
 
+
 void Collisions(void) {
 	// checks for player collision with platforms
 	for (int i = 0; i < NUM_PLATFORMS; i++) {
 		if (Platforms[i].life == alive) {
-			int xDiff = abs(Player.x + PLAYER_HEIGHT - Platforms[i].x);
-			int yDiff = abs((Player.y-PLAYER_WIDTH) - (Platforms[i].y-PLATFORM_WIDTH));
+			int xDiff = abs(Player.x + PLAYER_WIDTH - Platforms[i].x);
+			int yDiff = abs((Player.y-PLAYER_HEIGHT/2) - (Platforms[i].y-PLATFORM_HEIGHT/2));
 			if ((xDiff < 4) && (yDiff < 5) && Player.vx > 0) {
 				Player.vx = JUMP_SPEED;
-				return;
+				break;
+			}
+		}
+	}
+	
+	// check for bullet collision with enemies
+	for (int i = 0; i < NUM_BULLETS; i++) {
+		for (int j = 0; j < NUM_ENEMIES; j++) {
+			if (Enemys[i].life == alive) {
+				if (RectIntersect(Bullets[i], BULLET_WIDTH, BULLET_HEIGHT, Enemys[j], ENEMY_WIDTH, ENEMY_HEIGHT)) {
+					Enemys[j].life = dead;
+				}
 			}
 		}
 	}
 }
+
 
 // **************SysTick_Init*********************
 // Initialize Systick periodic interrupts
@@ -339,7 +393,16 @@ int main(void){
 }
 
 
+// determines whether two rectangles interect given their corners and widths, sprites are just rectangles
+int RectIntersect(sprite_t rect0, int width0, int height0, sprite_t rect1, int width1, int height1) {
+	return RangeIntersect(rect0.x, rect0.x + width0, rect1.x, rect1.x + width1) &&
+				 RangeIntersect(rect0.y, rect0.y - height0, rect1.y, rect1.y - height1);
+}
 
+// returns whether any number is in both the min0-max0 and min1-max1 range
+int RangeIntersect(int min0, int max0, int min1, int max1) {
+	return (MAX(max0, min0) >= MIN(min1, max1) && (MIN(min0, max0) <= MAX(min1, max1)));
+}
 
 
 
