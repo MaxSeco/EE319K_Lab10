@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "Sound.h"
 #include "DAC.h"
+#include "Timer0.h"
+#include "..//inc//tm4c123gh6pm.h"
 // these are sampled at 8 bits 11kHz
 // If your DAC is less than 8 bits you will need to scale the data
 const uint8_t shoot[4080] = {
@@ -1137,11 +1139,23 @@ const uint8_t highpitch[1802] = {
   67, 119, 148, 166, 164, 238, 223, 202, 174, 112, 96, 78, 0, 34, 54, 99, 143, 160, 166, 183, 
   250, 207};
 
+	
+#define PA5	(*((volatile uint32_t *)0x40004080))
+void PA5toggle(void) {
+	PA5 ^= 0x20;
+}
 // define a background task to run at 11 kHz, which outputs one value to DAC each interrupt
   
 void Sound_Init(void){
-// write this
-  // initialize a 11kHz timer, and the DAC
+	DAC_Init();
+	SYSCTL_RCGCGPIO_R |= 0x01;							// 1) Activate clock for port A
+	while ((SYSCTL_PRGPIO_R&0x01) == 0) {};	// 
+	GPIO_PORTA_AMSEL_R &= ~0x20;						// no analog
+	GPIO_PORTA_PCTL_R &= ~0x00F00000;				// regular GPIO function
+	GPIO_PORTA_DIR_R |= 0x20;								// make PA5 out
+	GPIO_PORTA_AFSEL_R &= ~0x20;						// disable alt funct on PA5
+	GPIO_PORTA_DEN_R |= 0x20;								// enable digital I/O on PA5
+	Timer0_Init(&PA5toggle, 7273);					// every 91us, or about 11kHz
 };
 
 //******* Sound_Start ************

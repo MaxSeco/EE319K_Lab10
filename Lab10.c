@@ -95,6 +95,7 @@ sprite_t Bullets[MAX_BULLETS];
 sprite_t Platforms[NUM_PLATFORMS];
 
 int NeedToDraw;
+int highestPlatformIndex;				// saves the highest/last platform index, so newer platforms can be placed above that only 
 
 // Initializes all game objects at the beginning of game
 void Init(void) {
@@ -110,9 +111,10 @@ void Init(void) {
 	Platforms[0].y = SCREEN_HEIGHT/2;
 	Platforms[0].image = Platform1;
 	Platforms[0].life = alive;
+	highestPlatformIndex = NUM_PLATFORMS-1;
 	for (int i = 1; i < NUM_PLATFORMS; i++) {
 		Platforms[i].x = Platforms[i-1].x - Random()%30 - 8;     // next platform x coordinate based on the previous
-		Platforms[i].y = (Random()%(SCREEN_HEIGHT-10))+10;
+		Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_WIDTH))+PLATFORM_WIDTH;
 		Platforms[i].image = Platform1;
 		Platforms[i].life = alive;
 	}
@@ -121,21 +123,54 @@ void Init(void) {
 
 // Called by SysTick to move all the objects on screen
 // Does not output to the LCD
-void Move(void) {
+void Move(uint32_t input) {
+	int8_t movePlatforms = 0;								// 1 if platforms move, 0 if player moves.
 	// Physics for the Player's y-direction
 	if (Player.life == alive) {
 			NeedToDraw = 1;
-			uint32_t adcData = ADC_In();
-			Player.y = 62 -((62-8)*adcData/4096);	// adcData 0-4095, screen 0-63 pixels wide, player width 8 pixels. Slide pot now moves player.
+			//uint32_t adcData = ADC_In();
+			//Player.y = 62 -((62-8)*adcData/4096);	// adcData 0-4095, screen 0-63 pixels wide, player width 8 pixels. Slide pot now moves player.
+			
+			if ((input&0x02) == 0x02) { 			// using buttons to move for now because ADC is unreliable
+				Player.y += 3;
+			} 
+			if ((input&0x01) == 0x01) {
+				Player.y += -3;
+			} 
 			
 		// physics for the Player's x-direction
 			if (Player.x >= 113) {
 				Player.x = SCREEN_WIDTH - PLAYER_HEIGHT;
 				Player.vx = JUMP_SPEED;
-			} else if (Player.vx < MAX_FALLING_SPEED) {
+			} 
+			if (Player.vx < MAX_FALLING_SPEED) {
 					Player.vx += GRAVITY;
+			}
+			if (Player.x > 65) {														// if player is below a certain line, player falls normally
+				Player.x += Player.vx;												
+			} else if (Player.vx < 0){											// we enter this "else if" if the player is above a certain line 
+				Player.x = 65;
+				movePlatforms = 1;
+			} else {																				// if player is no longer moving up, player is ready to fall down
+				Player.x = 66;																// we no longer need to move the platforms
+				movePlatforms = 0;
+			}
+			
+	}
+	
+	// moves the platforms when player is above a certain line
+	if (movePlatforms) {
+		for (int i = 0; i < NUM_PLATFORMS; i++) {
+			if (Platforms[i].life == alive) {
+				Platforms[i].x += abs(Player.vx);
+				if (Platforms[i].x > 124) {
+					Platforms[i].x = Platforms[highestPlatformIndex].x - Random()%30 - 8;
+					Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_WIDTH))+PLATFORM_WIDTH;
+					highestPlatformIndex = i;
 				}
-			Player.x += Player.vx;
+			}
+		}
+		movePlatforms = 0;
 	}
 			
 
@@ -211,13 +246,11 @@ void Collisions(void) {
 			int xDiff = abs(Player.x + PLAYER_HEIGHT - Platforms[i].x);
 			int yDiff = abs((Player.y-PLAYER_WIDTH) - (Platforms[i].y-PLATFORM_WIDTH));
 			if ((xDiff < 4) && (yDiff < 5) && Player.vx > 0) {
-				Player.image = BigExplosion0;
 				Player.vx = JUMP_SPEED;
 				return;
 			}
 		}
 	}
-	Player.image = Player1;
 }
 
 // **************SysTick_Init*********************
@@ -237,18 +270,18 @@ void SysTick_Init(uint32_t period){
 // Is called every 50ms to update the physics of the game, does not output to LCD
 void SysTick_Handler(void){ 
 	PF2 ^= 0x04;     // Heartbeat
-	static uint32_t lastdown = 0;				// this is to prevent rapid fire when button is held down
-	uint32_t down  = Switch_In();
+	static uint32_t lastinput = 0;				// this is to prevent rapid fire when button is held down
+	uint32_t input  = Switch_In();
 	
 	// fires if PE2 is pressed
-	if (down  == 0x04 && lastdown == 0) {
+	if ((input&0x04)  == 0x04 && lastinput == 0) {
 		Fire(BULLET_SPEED, 0);
 	}
 	
 	
-	Move(); 			// moves everything on screen
+	Move(input); 			// moves everything on screen
 	Collisions(); // checks for collisions
-	lastdown = down;
+	lastinput = input&0x04;
 }
 //*******************************************************************************************************************************
 // TExaSdisplay logic analyzer shows 7 bits 0,PB5,PB4,PF3,PF2,PF1,0 
@@ -271,7 +304,6 @@ void Profile_Init(void){
 }
 //********************************************************************************
  
-void Delay100ms(uint32_t count); // time delay in 0.1 seconds
 
 int main(void){
   DisableInterrupts();
