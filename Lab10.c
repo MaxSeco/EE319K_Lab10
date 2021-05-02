@@ -113,7 +113,7 @@ void Init(void) {
 	Platforms[0].life = alive;
 	highestPlatformIndex = NUM_PLATFORMS-1;
 	for (int i = 1; i < NUM_PLATFORMS; i++) {
-		Platforms[i].x = Platforms[i-1].x - Random()%30 - 8;     // next platform x coordinate based on the previous
+		Platforms[i].x = Platforms[i-1].x - Random()%24 - 8;     // next platform x coordinate based on the previous
 		Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_WIDTH))+PLATFORM_WIDTH;
 		Platforms[i].image = Platform1;
 		Platforms[i].life = alive;
@@ -164,7 +164,7 @@ void Move(uint32_t input) {
 			if (Platforms[i].life == alive) {
 				Platforms[i].x += abs(Player.vx);
 				if (Platforms[i].x > 124) {
-					Platforms[i].x = Platforms[highestPlatformIndex].x - Random()%30 - 8;
+					Platforms[i].x = Platforms[highestPlatformIndex].x - Random()%24 - 8;
 					Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_WIDTH))+PLATFORM_WIDTH;
 					highestPlatformIndex = i;
 				}
