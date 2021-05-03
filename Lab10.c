@@ -90,6 +90,7 @@
 
 // structs and enums
 typedef enum {dead, alive} status_t;
+typedef enum {English, Spanish} language_t;
 struct sprite {
 	int32_t x; 							// x coordinate 0-127
 	int32_t y; 							// y coordinate 0-63
@@ -114,6 +115,7 @@ int RectIntersect(sprite_t rect0, int width0, int height0, sprite_t rect1, int w
 int NeedToDraw;
 int highestPlatformIndex;				// saves the highest/last platform index, so newer platforms can be placed above that only
 int score;
+int language = English;
 
 // Initializes all game objects at the beginning of game
 void Init(void) {
@@ -152,7 +154,7 @@ void Init(void) {
 
 // Called by SysTick to move all the objects on screen
 // Does not output to the LCD
-void Move(uint32_t input) {
+void Move(void) {
 	int8_t movePlatforms = 0;								// 1 if platforms move, 0 if player moves.
 
 	// Physics for the Player's y-direction
@@ -347,7 +349,7 @@ void SysTick_Handler(void){
 	}
 	
 	
-	Move(input); 			// moves everything on screen
+	Move(); 			// moves everything on screen
 	Collisions(); // checks for collisions
 	lastinput = input&0x04;
 }
@@ -391,19 +393,27 @@ int main(void){
   //SSD1306_ClearBuffer();
   //SSD1306_DrawBMP(2, 62, SpaceInvadersMarquee, 0, SSD1306_WHITE);
   //SSD1306_OutBuffer();
-  EnableInterrupts();
+  
+	EnableInterrupts();
 
   while(Player.life == alive){
-    PF1 ^= 0x02;
+    PF1 ^= 0x02;					// heartbeat
 		if (NeedToDraw) {
-			Draw();
+			Draw();							// update LCD
 		}
   }
 	DisableInterrupts();
 	SSD1306_OutClear();
-	SSD1306_OutString("Nice Try!");
-	SSD1306_SetCursor(0, 2);
-	SSD1306_OutString("Score: ");
+	if (language == English) {
+		SSD1306_OutString("Nice Try!");
+		SSD1306_SetCursor(0, 2);
+		SSD1306_OutString("Score: ");
+	} else if (language == Spanish) {
+		SSD1306_OutString("Buen Intento!");
+		SSD1306_SetCursor(0, 2);
+		SSD1306_OutString("Puntaje: ");
+	}
+	
 	LCD_OutDec(score/100);
 	while(1) {};
 }
