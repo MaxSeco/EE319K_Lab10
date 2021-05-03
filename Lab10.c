@@ -93,7 +93,9 @@ typedef enum {dead, alive} status_t;
 struct sprite {
 	int32_t x; 							// x coordinate 0-127
 	int32_t y; 							// y coordinate 0-63
-	const uint8_t *image;  	// ptr->image
+	const uint8_t *image[10];  	// ptr->image
+	uint32_t frameIndex;
+	uint32_t numFrames;
 	int32_t vx, vy;					// pixels/50ms
 	status_t life;					// dead/alive
 };
@@ -119,19 +121,19 @@ void Init(void) {
 	Player.x = 116;
 	Player.y = 24;
 	Player.vx = JUMP_SPEED;									// player has initial y velocity to jump
-	Player.image = Player1;
+	Player.image[0] = Player1;
 	Player.life = alive;
 	
 	// Initialize Platforms
 	Platforms[0].x = (SCREEN_WIDTH*3)/4;			// first platform's coordinates will be determined
 	Platforms[0].y = SCREEN_HEIGHT/2;
-	Platforms[0].image = Platform1;
+	Platforms[0].image[0] = Platform1;
 	Platforms[0].life = alive;
 	highestPlatformIndex = NUM_PLATFORMS-1;
 	for (int i = 1; i < NUM_PLATFORMS; i++) {
 		Platforms[i].x = Platforms[i-1].x - Random()%24 - 8;     // next platform x coordinate based on the previous
 		Platforms[i].y = (Random()%(SCREEN_HEIGHT-PLATFORM_HEIGHT))+PLATFORM_HEIGHT;
-		Platforms[i].image = Platform1;
+		Platforms[i].image[0] = Platform1;
 		Platforms[i].life = alive;
 	}
 	
@@ -140,7 +142,9 @@ void Init(void) {
 		int rand = Random()%(NUM_PLATFORMS-1) + 1; 		// random int from 1 to (NUM_PLATFOMRS-1) 
 		Enemys[i].x = Platforms[rand].x - ENEMY_WIDTH; 
 		Enemys[i].y = Platforms[rand].y-1;
-		Enemys[i].image = Enemy2;
+		Enemys[i].image[0]= Enemy2;
+		Enemys[i].image[1] = Enemy2_2;
+		Enemys[i].numFrames = 2;
 		Enemys[i].life = alive;
 	}
 }
@@ -150,18 +154,12 @@ void Init(void) {
 // Does not output to the LCD
 void Move(uint32_t input) {
 	int8_t movePlatforms = 0;								// 1 if platforms move, 0 if player moves.
+
 	// Physics for the Player's y-direction
 	if (Player.life == alive) {
 			NeedToDraw = 1;
-			//uint32_t adcData = ADC_In();
-			//Player.y = 62 -((62-8)*adcData/4096);	// adcData 0-4095, screen 0-63 pixels wide, player width 8 pixels. Slide pot now moves player.
-			
-			if ((input&0x02) == 0x02) { 			// using buttons to move for now because ADC is unreliable
-				Player.y += 3;
-			} 
-			if ((input&0x01) == 0x01) {
-				Player.y += -3;
-			} 
+			uint32_t adcData = ADC_In();
+			Player.y = 62 -((62-8)*adcData/4096);	// adcData 0-4095, screen 0-63 pixels wide, player width 8 pixels. Slide pot now moves player.
 			
 		// physics for the Player's x-direction
 			if (Player.x >= SCREEN_WIDTH) {
@@ -230,27 +228,32 @@ void Draw(void) {
 
 	// draws player
 	if (Player.life == alive) {
-		SSD1306_DrawBMP(Player.x, Player.y, Player.image, 0, SSD1306_INVERSE);
+		SSD1306_DrawBMP(Player.x, Player.y, Player.image[0], 0, SSD1306_INVERSE);
 	}
 	
 	// draws bullets
 	for (int i = 0; i< NUM_BULLETS; i++) {
 		if (Bullets[i].life == alive) {
-			SSD1306_DrawBMP(Bullets[i].x, Bullets[i].y, Bullets[i].image, 0, SSD1306_INVERSE);
+			SSD1306_DrawBMP(Bullets[i].x, Bullets[i].y, Bullets[i].image[0], 0, SSD1306_INVERSE);
 		}
 	}
 	
 	// draws platforms
 	for (int i = 0; i < NUM_PLATFORMS; i++) {
 		if (Platforms[i].life == alive) {
-			SSD1306_DrawBMP(Platforms[i].x, Platforms[i].y, Platforms[i].image, 0, SSD1306_INVERSE);
+			SSD1306_DrawBMP(Platforms[i].x, Platforms[i].y, Platforms[i].image[0], 0, SSD1306_INVERSE);
 		}
 	}
 	
 	// draws enemies
 	for (int i = 0; i < NUM_ENEMIES; i++) {
 		if (Enemys[i].life == alive) {
-			SSD1306_DrawBMP(Enemys[i].x, Enemys[i].y, Enemys[i].image, 0, SSD1306_WHITE);
+			SSD1306_DrawBMP(Enemys[i].x, Enemys[i].y, Enemys[i].image[Enemys[i].frameIndex], 0, SSD1306_WHITE);
+			static uint32_t frameCounter = 0;
+			if (++frameCounter >= 10) {
+				Enemys[i].frameIndex = (Enemys[i].frameIndex+1)%(Enemys[i].numFrames);
+				frameCounter = 0;
+			} 
 		}
 	}
 	
@@ -267,7 +270,7 @@ void Fire(int vx, int vy) {
 		if (Bullets[i].life == dead) {
 			Bullets[i].x = Player.x;
 			Bullets[i].y = Player.y - PLAYER_HEIGHT/2;
-			Bullets[i].image = Laser2;
+			Bullets[i].image[0] = Laser2;
 			// To prevent bullets moving slower and being under Player
 			if (Player.vx < 0) {
 				Bullets[i].vx = vx + Player.vx; // bullet is at least as fast as the player
@@ -367,7 +370,7 @@ void Profile_Init(void){
   GPIO_PORTB_DIR_R |=  0x30;   // output on PB4 PB5
   GPIO_PORTB_DEN_R |=  0x30;   // enable on PB4 PB5  
 }
-//********************************************************************************
+//************************************************************************************************************************
  
 
 int main(void){
@@ -379,8 +382,8 @@ int main(void){
   SSD1306_Init(SSD1306_SWITCHCAPVCC);
   SSD1306_OutClear();   
   Profile_Init(); // PB5,PB4,PF3,PF2,PF1 
-	SysTick_Init(4000000); // interrupts every 50ms
 	Random_Init(NVIC_ST_CURRENT_R);
+	SysTick_Init(4000000); // interrupts every 50ms
 	ADC_Init(4);				
 	//Sound_Init();
 	Switch_Init();
@@ -389,11 +392,6 @@ int main(void){
   //SSD1306_DrawBMP(2, 62, SpaceInvadersMarquee, 0, SSD1306_WHITE);
   //SSD1306_OutBuffer();
   EnableInterrupts();
-	
-  //SSD1306_ClearBuffer();
-  //SSD1306_DrawBMP(47, 63, PlayerShip0, 0, SSD1306_WHITE); // player ship bottom
-  //SSD1306_DrawBMP(53, 55, Bunker0, 0, SSD1306_WHITE);
-  //SSD1306_OutBuffer();											// 25 ms
 
   while(Player.life == alive){
     PF1 ^= 0x02;
@@ -410,8 +408,10 @@ int main(void){
 	while(1) {};
 }
 
+//*****************************************************************************************************************
 
-// determines whether two rectangles interect given their corners and widths, sprites are just rectangles
+
+// determines whether two rectangles interect given their corners and widths/heights, sprites are just rectangles
 int RectIntersect(sprite_t rect0, int width0, int height0, sprite_t rect1, int width1, int height1) {
 	return RangeIntersect(rect0.x, rect0.x + width0, rect1.x, rect1.x + width1) &&
 				 RangeIntersect(rect0.y, rect0.y - height0, rect1.y, rect1.y - height1);
