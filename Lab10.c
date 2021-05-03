@@ -373,7 +373,7 @@ void Profile_Init(void){
   GPIO_PORTB_DEN_R |=  0x30;   // enable on PB4 PB5  
 }
 //************************************************************************************************************************
- 
+
 
 int main(void){
   DisableInterrupts();
@@ -389,33 +389,57 @@ int main(void){
 	ADC_Init(4);				
 	//Sound_Init();
 	Switch_Init();
-	Init();
-  //SSD1306_ClearBuffer();
-  //SSD1306_DrawBMP(2, 62, SpaceInvadersMarquee, 0, SSD1306_WHITE);
-  //SSD1306_OutBuffer();
-  
-	EnableInterrupts();
+	while (1) {
+		Init();
+		sprite_t whiteBoxOutline;
+		whiteBoxOutline.x = 70;
+		whiteBoxOutline.y = 50;
+		SSD1306_ClearBuffer();
+		SSD1306_DrawBMP(whiteBoxOutline.x, whiteBoxOutline.y, white_box2, 14, SSD1306_INVERSE);// language selection outline
+		SSD1306_DrawBMP(1, 63, start_screen, 14, SSD1306_INVERSE); // starting screen
 
-  while(Player.life == alive){
-    PF1 ^= 0x02;					// heartbeat
-		if (NeedToDraw) {
-			Draw();							// update LCD
+		SSD1306_OutBuffer();
+
+		// logic for starting screen language selection
+		uint32_t input  = Switch_In();
+		while ((input&0x04) != 0x04) {	// wait for PE2 to be pressed to start game
+			static uint32_t lastinput = 0;	// only switch once when pressed
+			input  = Switch_In();
+			if ((input&0x02) == 0x02 && lastinput == 0) { // if PE1 pressed, switch language
+				SSD1306_ClearBuffer();
+				whiteBoxOutline.x = (whiteBoxOutline.x == 70) ? 98: 70; // change location of whiteBoxOutline
+				language = (whiteBoxOutline.x == 70) ? English : Spanish;
+				SSD1306_DrawBMP(whiteBoxOutline.x, whiteBoxOutline.y, white_box2, 14, SSD1306_INVERSE); // language selection outline
+				SSD1306_DrawBMP(1, 63, start_screen, 14, SSD1306_INVERSE); // starting screen
+				SSD1306_OutBuffer();
+			}
+			lastinput = input;
 		}
-  }
-	DisableInterrupts();
-	SSD1306_OutClear();
-	if (language == English) {
-		SSD1306_OutString("Nice Try!");
-		SSD1306_SetCursor(0, 2);
-		SSD1306_OutString("Score: ");
-	} else if (language == Spanish) {
-		SSD1306_OutString("Buen Intento!");
-		SSD1306_SetCursor(0, 2);
-		SSD1306_OutString("Puntaje: ");
+
+		EnableInterrupts();
+
+		while(Player.life == alive){
+			PF1 ^= 0x02;					// heartbeat
+			if (NeedToDraw) {
+				Draw();							// update LCD
+			}
+		}
+		DisableInterrupts();
+		SSD1306_OutClear();
+		if (language == English) {
+			SSD1306_OutString("Nice Try!");
+			SSD1306_SetCursor(0, 2);
+			SSD1306_OutString("Score: ");
+		} else if (language == Spanish) {
+			SSD1306_OutString("Buen Intento!");
+			SSD1306_SetCursor(0, 2);
+			SSD1306_OutString("Puntaje: ");
+		}
+
+		LCD_OutDec(score/100);
+		input = Switch_In();
+		while (input == 0) {input = Switch_In();}
 	}
-	
-	LCD_OutDec(score/100);
-	while(1) {};
 }
 
 //*****************************************************************************************************************
