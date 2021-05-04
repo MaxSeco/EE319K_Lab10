@@ -416,9 +416,9 @@ int main(void){
 			}
 			lastinput = input;
 		}
-
 		EnableInterrupts();
 		Random_Init(NVIC_ST_CURRENT_R);
+		
 		while(Player.life == alive){
 			PF1 ^= 0x02;					// heartbeat
 			if (NeedToDraw) {
@@ -443,6 +443,7 @@ int main(void){
 		
 		int delay = 0; 
 		while (delay < 1000000) {delay++;}; // delay before starting new game
+		score = 0;
 	}
 }
 
