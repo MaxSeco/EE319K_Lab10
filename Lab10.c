@@ -88,6 +88,7 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))						// finds the min of two numbers
 #define MAX(a,b) (((a)>(b))?(a):(b))						// finds the max of two numbers
 
+
 // structs and enums
 typedef enum {dead, alive} status_t;
 typedef enum {English, Spanish} language_t;
@@ -346,6 +347,7 @@ void SysTick_Handler(void){
 	// fires if PE2 is pressed
 	if ((input&0x04)  == 0x04 && lastinput == 0 && Player.life == alive) {
 		Fire(BULLET_SPEED, 0);
+		Sound_Shoot();
 	}
 	
 	
@@ -384,10 +386,9 @@ int main(void){
   SSD1306_Init(SSD1306_SWITCHCAPVCC);
   SSD1306_OutClear();   
   Profile_Init(); // PB5,PB4,PF3,PF2,PF1 
-	Random_Init(NVIC_ST_CURRENT_R);
 	SysTick_Init(4000000); // interrupts every 50ms
 	ADC_Init(4);				
-	//Sound_Init();
+	Sound_Init();
 	Switch_Init();
 	while (1) {
 		Init();
@@ -403,7 +404,7 @@ int main(void){
 		// logic for starting screen language selection
 		uint32_t input  = Switch_In();
 		while ((input&0x04) != 0x04) {	// wait for PE2 to be pressed to start game
-			static uint32_t lastinput = 0;	// only switch once when pressed
+			static uint32_t lastinput = 0;	// only switch language once when pressed
 			input  = Switch_In();
 			if ((input&0x02) == 0x02 && lastinput == 0) { // if PE1 pressed, switch language
 				SSD1306_ClearBuffer();
@@ -417,7 +418,7 @@ int main(void){
 		}
 
 		EnableInterrupts();
-
+		Random_Init(NVIC_ST_CURRENT_R);
 		while(Player.life == alive){
 			PF1 ^= 0x02;					// heartbeat
 			if (NeedToDraw) {
@@ -439,6 +440,9 @@ int main(void){
 		LCD_OutDec(score/100);
 		input = Switch_In();
 		while (input == 0) {input = Switch_In();}
+		
+		int delay = 0; 
+		while (delay < 1000000) {delay++;}; // delay before starting new game
 	}
 }
 

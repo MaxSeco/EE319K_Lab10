@@ -20,8 +20,8 @@ void Sound_Init(void);
 //        count is the length of the array
 // Output: none
 // special cases: as you wish to implement
-void Sound_Play(const uint8_t *pt, uint32_t count);
-
+void Sound_Start(uint8_t *pt, uint32_t count);
+void Sound_Shoot(void);
 
 #endif
 

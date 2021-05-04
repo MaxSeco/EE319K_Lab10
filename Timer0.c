@@ -22,11 +22,12 @@
  http://users.ece.utexas.edu/~valvano/
  */
 #include <stdint.h>
-
 #include "../inc/tm4c123gh6pm.h"
+#include "Timer0.h"
 
 void (*PeriodicTask0)(void);   // user function
-
+int TimerCount;
+int endofArray; 
 // ***************** Timer0_Init ****************
 // Activate TIMER0 interrupts to run user task periodically
 // Inputs:  task is a pointer to a user function
@@ -49,7 +50,24 @@ void Timer0_Init(void(*task)(void), uint32_t period){
   TIMER0_CTL_R = 0x00000001;    // 10) enable TIMER0A
 }
 
+void Timer0A_Stop(void) {
+	TIMER0_CTL_R &= ~0x00000001;			// disable timer
+}
+
+void Timer0A_Start(uint32_t count) {
+	endofArray = count - 1;
+	TIMER0_CTL_R |= 0x00000001;				// enable timer
+}
+
 void Timer0A_Handler(void){
   TIMER0_ICR_R = TIMER_ICR_TATOCINT;// acknowledge TIMER0A timeout
-  (*PeriodicTask0)();                // execute user task
+	TimerCount++;
+	if (TimerCount == endofArray) {
+		Timer0A_Stop();
+		TimerCount = 0;
+	} else {
+		(*PeriodicTask0)();                // execute user task
+	}
+  
 }
+

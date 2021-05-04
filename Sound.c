@@ -10,7 +10,8 @@
 #include "..//inc//tm4c123gh6pm.h"
 // these are sampled at 8 bits 11kHz
 // If your DAC is less than 8 bits you will need to scale the data
-const uint8_t shoot[4080] = {
+
+uint8_t shoot[4080] = {
   129, 99, 103, 164, 214, 129, 31, 105, 204, 118, 55, 92, 140, 225, 152, 61, 84, 154, 184, 101, 
   75, 129, 209, 135, 47, 94, 125, 207, 166, 72, 79, 135, 195, 118, 68, 122, 205, 136, 64, 106, 
   143, 173, 105, 54, 122, 200, 133, 74, 106, 215, 236, 91, 43, 84, 163, 115, 34, 81, 150, 209, 
@@ -1141,8 +1142,14 @@ const uint8_t highpitch[1802] = {
 
 	
 #define PA5	(*((volatile uint32_t *)0x40004080))
+#define PF3       (*((volatile uint32_t *)0x40025020))
+uint8_t *soundArrayPt;
+uint32_t soundArrayIndex;
 void PA5toggle(void) {
-	PA5 ^= 0x20;
+	PA5 ^= 0x20;				// heartbeat
+	PF3 ^= 0x8;
+	DAC_Out((*soundArrayPt)>>4);
+	soundArrayPt++;
 }
 // define a background task to run at 11 kHz, which outputs one value to DAC each interrupt
   
@@ -1155,7 +1162,7 @@ void Sound_Init(void){
 	GPIO_PORTA_DIR_R |= 0x20;								// make PA5 out
 	GPIO_PORTA_AFSEL_R &= ~0x20;						// disable alt funct on PA5
 	GPIO_PORTA_DEN_R |= 0x20;								// enable digital I/O on PA5
-	Timer0_Init(&PA5toggle, 7273);					// every 91us, or about 11kHz
+	Timer0_Init(&PA5toggle, 6000);					// every 91us, or about 11kHz, period  = 80M / 11.025k
 };
 
 //******* Sound_Start ************
@@ -1167,7 +1174,13 @@ void Sound_Init(void){
 //        count is the length of the array
 // Output: none
 // special cases: as you wish to implement
-void Sound_Start(const uint8_t *pt, uint32_t count){
-// write this
+void Sound_Start(uint8_t *pt, uint32_t count){
+	soundArrayPt = pt;
+	soundArrayIndex = count;
+	Timer0A_Start(count);
 };
+
+void Sound_Shoot(void) {
+	Sound_Start(&shoot[0], 4080);
+}
 
