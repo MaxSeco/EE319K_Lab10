@@ -1162,7 +1162,7 @@ void Sound_Init(void){
 	GPIO_PORTA_DIR_R |= 0x20;								// make PA5 out
 	GPIO_PORTA_AFSEL_R &= ~0x20;						// disable alt funct on PA5
 	GPIO_PORTA_DEN_R |= 0x20;								// enable digital I/O on PA5
-	Timer0_Init(&PA5toggle, 6000);					// every 91us, or about 11kHz, period  = 80M / 11.025k
+	Timer0_Init(&PA5toggle, 7256);					// every 91us, or about 11kHz, period  = 80M / 11.025k
 };
 
 //******* Sound_Start ************

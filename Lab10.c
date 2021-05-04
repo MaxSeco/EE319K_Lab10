@@ -282,6 +282,7 @@ void Fire(int vx, int vy) {
 			}
 			Bullets[i].vy = vy;
 			Bullets[i].life = alive;
+			Sound_Shoot();
 			return;
 		}
 	}
@@ -347,7 +348,6 @@ void SysTick_Handler(void){
 	// fires if PE2 is pressed
 	if ((input&0x04)  == 0x04 && lastinput == 0 && Player.life == alive) {
 		Fire(BULLET_SPEED, 0);
-		Sound_Shoot();
 	}
 	
 	
