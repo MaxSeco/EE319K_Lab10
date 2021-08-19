@@ -13,10 +13,9 @@ Demonstration Video 1: https://drive.google.com/file/d/1Lx6L4kiQN5LvZSLJvAI0MO8_
 
 Demonstration Video 2: https://drive.google.com/file/d/1YeX47b2BQyIygNayNiKZOYUm-m4TwXtW/view?usp=sharing
 
-![image](https://user-images.githubusercontent.com/66232491/130109119-fab45e88-acc4-4f4b-8ee0-f0b9e6990e3e.png)
+![IMG_1294](https://user-images.githubusercontent.com/66232491/130109749-61074fbd-b980-4296-97a1-976afaf3acba.PNG)
 
 ![IMG_1295](https://user-images.githubusercontent.com/66232491/130109142-462ab61b-af31-4dc8-8aa5-a936cf94a309.PNG)
-
 
 
 Enjoy!
