@@ -7,6 +7,7 @@ Features:
 - LEDs
 - Interrupt service routines
 - C and assembly language
+- Slide potentiometer/buttons
 
 
 Demonstration Video 1: https://drive.google.com/file/d/1Lx6L4kiQN5LvZSLJvAI0MO8_3HvEPJby/view?usp=sharing
